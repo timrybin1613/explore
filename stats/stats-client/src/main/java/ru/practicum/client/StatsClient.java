@@ -1,11 +1,12 @@
 package ru.practicum.client;
 
-import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -21,14 +22,20 @@ import java.util.Optional;
 
 @Slf4j
 @Component
-@AllArgsConstructor
 public class StatsClient {
 
     private final RestTemplate restTemplate;
+    private final String serverUrl;
 
-    private final String serverUrl = "http://localhost:9090";
     private static final String HIT_PATH = "/hit";
     private static final String VIEW_STATS_PATH = "/stats";
+
+    public StatsClient(
+            RestTemplate restTemplate,
+            @Value("${stats.server.url}") String serverUrl) {
+        this.restTemplate = restTemplate;
+        this.serverUrl = serverUrl;
+    }
 
     public void save(EndpointHitDto dto) {
         try {
@@ -37,15 +44,21 @@ public class StatsClient {
                     dto,
                     Void.class
             );
+        } catch (HttpClientErrorException e) {
+            log.error(
+                    "Stats server returned {}: {}",
+                    e.getStatusCode(),
+                    e.getResponseBodyAsString()
+            );
         } catch (RestClientException e) {
             log.error("Не удалось сохранить статистику", e);
         }
     }
 
     public List<ViewStatsDto> getStats(LocalDateTime start,
-                                        LocalDateTime end,
-                                        List<String> uris,
-                                        Boolean unique) {
+                                       LocalDateTime end,
+                                       List<String> uris,
+                                       Boolean unique) {
         DateTimeFormatter formatter =
                 DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
