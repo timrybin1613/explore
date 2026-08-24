@@ -3,6 +3,8 @@ package ru.practicum.service.event;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.client.StatsClient;
@@ -122,7 +124,7 @@ public class EventServiceImpl implements EventService {
         Long confirmedRequests = requestsByEventId.getOrDefault(event.getId(), 0L);
         Long views = viewsByEventId.getOrDefault(event.getId(), 0).longValue();
 
-        return buildFullDto(event, confirmedRequests, views);
+        return buildFullDto(event, views, confirmedRequests);
     }
 
     @Transactional
@@ -403,49 +405,26 @@ public class EventServiceImpl implements EventService {
             throw new ValidationException("Range start must not be after range end.");
         }
 
-        String text = params.getText() == null ? "" : params.getText();
+        EventSearchCriteria criteria = new EventSearchCriteria(params);
 
-        List<Long> categories = params.getCategories() == null
-                ? Collections.emptyList()
-                : params.getCategories();
+        if (params.getSort() == SortType.EVENT_DATE) {
+            return searchByEventDate(
+                    criteria,
+                    now,
+                    pageable);
+        }
 
-        boolean textEmpty = text.isEmpty();
-        boolean categoriesEmpty = categories.isEmpty();
+        if (params.getSort() == SortType.VIEWS) {
+            return searchByViews(
+                    criteria,
+                    now,
+                    pageable);
+        }
 
-        boolean paidNotSet = params.getPaid() == null;
-
-        boolean rangeStartNotSet = params.getRangeStart() == null;
-        boolean rangeEndNotSet = params.getRangeEnd() == null;
-
-        List<Event> events = eventRepository.searchPublic(
-                text,
-                textEmpty,
-                categories,
-                categoriesEmpty,
-                params.getPaid(),
-                paidNotSet,
-                params.getRangeStart(),
-                rangeStartNotSet,
-                params.getRangeEnd(),
-                rangeEndNotSet,
-                params.getOnlyAvailable(),
-                LocalDateTime.now(),
-                pageable
-        );
-
-        Map<Long, Long> requestsByEventId = eventStatsService.getConfirmedRequestsMap(
-                events.stream().map(Event::getId).toList());
-        Map<Long, Integer> viewsByEventId = eventStatsService.getViewsMap(events);
-
-        return events.stream().map(event -> {
-            return eventMapper.toEventShortDto(
-                    event,
-                    categoryMapper.toCategoryDto(event.getCategory()),
-                    requestsByEventId.getOrDefault(event.getId(), 0L),
-                    userMapper.toUserShortDto(event.getInitiator()),
-                    viewsByEventId.getOrDefault(event.getId(), 0).longValue()
-            );
-        }).toList();
+        return searchWithoutSort(
+                criteria,
+                now,
+                pageable);
     }
 
     @Override
@@ -470,6 +449,100 @@ public class EventServiceImpl implements EventService {
                         eventId, 0).longValue(),
                 requestsByEventId.getOrDefault(eventId, 0L));
 
+    }
+
+    private List<EventShortDto> searchByEventDate(EventSearchCriteria criteria,
+                                                  LocalDateTime now,
+                                                  Pageable pageable
+    ) {
+        pageable = PageRequest.of(
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                Sort.by("eventDate").ascending()
+        );
+
+        List<Event> events = eventRepository.searchPublicPageable(
+                criteria.getText(),
+                criteria.getTextEmpty(),
+                criteria.getCategories(),
+                criteria.getCategoriesEmpty(),
+                criteria.getPaid(),
+                criteria.getPaidNotSet(),
+                criteria.getRangeStart(),
+                criteria.getRangeStartNotSet(),
+                criteria.getRangeEnd(),
+                criteria.getRangeEndNotSet(),
+                criteria.getOnlyAvailable(),
+                now,
+                pageable
+        );
+
+        Map<Long, Long> requestsByEventId = eventStatsService.getConfirmedRequestsMap(
+                events.stream().map(Event::getId).toList());
+        Map<Long, Integer> viewsByEventId = eventStatsService.getViewsMap(events);
+
+        return buildShortDtos(events, requestsByEventId, viewsByEventId);
+    }
+
+    private List<EventShortDto> searchByViews(EventSearchCriteria criteria,
+                                              LocalDateTime now,
+                                              Pageable pageable) {
+
+        List<Event> events = eventRepository.searchPublic(
+                criteria.getText(),
+                criteria.getTextEmpty(),
+                criteria.getCategories(),
+                criteria.getCategoriesEmpty(),
+                criteria.getPaid(),
+                criteria.getPaidNotSet(),
+                criteria.getRangeStart(),
+                criteria.getRangeStartNotSet(),
+                criteria.getRangeEnd(),
+                criteria.getRangeEndNotSet(),
+                criteria.getOnlyAvailable(),
+                now
+        );
+
+        Map<Long, Integer> viewsByEventId = eventStatsService.getViewsMap(events);
+        events.sort(Comparator.comparing(
+                (Event event) -> viewsByEventId.getOrDefault(event.getId(), 0)
+        ).reversed());
+        Map<Long, Long> requestsByEventId = eventStatsService.getConfirmedRequestsMap(
+                events.stream().map(Event::getId).toList());
+
+        return buildShortDtos(events.stream()
+                        .skip(pageable.getOffset())
+                        .limit(pageable.getPageSize())
+                        .toList(),
+                requestsByEventId,
+                viewsByEventId);
+    }
+
+    private List<EventShortDto> searchWithoutSort(EventSearchCriteria criteria,
+                                                  LocalDateTime now,
+                                                  Pageable pageable) {
+
+        List<Event> events = eventRepository.searchPublicPageable(
+                criteria.getText(),
+                criteria.getTextEmpty(),
+                criteria.getCategories(),
+                criteria.getCategoriesEmpty(),
+                criteria.getPaid(),
+                criteria.getPaidNotSet(),
+                criteria.getRangeStart(),
+                criteria.getRangeStartNotSet(),
+                criteria.getRangeEnd(),
+                criteria.getRangeEndNotSet(),
+                criteria.getOnlyAvailable(),
+                now,
+                pageable
+        );
+
+        Map<Long, Long> requestsByEventId = eventStatsService.getConfirmedRequestsMap(
+                events.stream().map(Event::getId).toList());
+        Map<Long, Integer> viewsByEventId = eventStatsService.getViewsMap(events);
+
+        return buildShortDtos(events, requestsByEventId, viewsByEventId);
     }
 
     private RequestStatusUpdateResultDto confirmRequests(List<Request> requests, Event event) {
@@ -534,6 +607,22 @@ public class EventServiceImpl implements EventService {
                 confirmedRequests,
                 toLocationDto(event)
         );
+    }
+
+    private List<EventShortDto> buildShortDtos(
+            List<Event> events,
+            Map<Long, Long> requestsByEventId,
+            Map<Long, Integer> viewsByEventId) {
+
+        return events.stream()
+                .map(event -> eventMapper.toEventShortDto(
+                        event,
+                        categoryMapper.toCategoryDto(event.getCategory()),
+                        requestsByEventId.getOrDefault(event.getId(), 0L),
+                        userMapper.toUserShortDto(event.getInitiator()),
+                        viewsByEventId.getOrDefault(event.getId(), 0).longValue()
+                ))
+                .toList();
     }
 
     private LocationDto toLocationDto(Event event) {

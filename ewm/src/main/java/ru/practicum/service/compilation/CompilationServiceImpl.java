@@ -92,14 +92,23 @@ public class CompilationServiceImpl implements CompilationService {
         List<Compilation> compilations = pinned == null ? compilationRepository.findAll(pageable).getContent()
                 : compilationRepository.findAllByPinned(pinned, pageable);
 
+        List<Event> compilationEvents = compilations.stream().map(Compilation::getEvents).flatMap(List::stream).toList();
+        List<EventShortDto> eventShortDtos = buildEventShortDtos(compilationEvents);
+
+        Map<Long, EventShortDto> eventDtosById = eventShortDtos.stream()
+                .collect(Collectors.toMap(
+                        EventShortDto::getId,
+                        dto -> dto));
+
         Map<Long, List<EventShortDto>> eventsByCompilationId = compilations.stream()
                 .collect(Collectors.toMap(
                         Compilation::getId,
-                        compilation -> buildEventShortDtos(compilation.getEvents())
-                ));
+                        compilation -> compilation.getEvents().stream()
+                                .map(Event::getId)
+                                .map(eventDtosById::get)
+                                .toList()));
 
         return compilationMapper.toDto(compilations, eventsByCompilationId);
-
     }
 
     @Override

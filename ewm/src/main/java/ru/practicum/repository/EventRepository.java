@@ -19,14 +19,14 @@ public interface EventRepository extends JpaRepository<Event, Long> {
     Optional<Event> findByIdAndInitiatorId(Long eventId, Long userId);
 
     @Query("""
-        select e
-        from Event e
-        where (:usersEmpty = true or e.initiator.id in :users)
-          and (:statesEmpty = true or e.state in :states)
-          and (:categoriesEmpty = true or e.category.id in :categories)
-          and (:rangeStartNotSet = true or e.eventDate >= :rangeStart)
-          and (:rangeEndNotSet = true or e.eventDate <= :rangeEnd)
-        """)
+            select e
+            from Event e
+            where (:usersEmpty = true or e.initiator.id in :users)
+              and (:statesEmpty = true or e.state in :states)
+              and (:categoriesEmpty = true or e.category.id in :categories)
+              and (:rangeStartNotSet = true or e.eventDate >= :rangeStart)
+              and (:rangeEndNotSet = true or e.eventDate <= :rangeEnd)
+            """)
     List<Event> search(
             @Param("users") List<Long> users,
             @Param("usersEmpty") boolean usersEmpty,
@@ -63,7 +63,7 @@ public interface EventRepository extends JpaRepository<Event, Long> {
                    or :rangeEndNotSet = false
                    or e.eventDate > :now)
             """)
-    List<Event> searchPublic(
+    List<Event> searchPublicPageable(
             @Param("text") String text,
             @Param("textEmpty") boolean textEmpty,
             @Param("categories") List<Long> categories,
@@ -77,6 +77,44 @@ public interface EventRepository extends JpaRepository<Event, Long> {
             @Param("onlyAvailable") Boolean onlyAvailable,
             @Param("now") LocalDateTime now,
             Pageable pageable
+    );
+
+    @Query("""
+            select e
+            from Event e
+            where e.state = ru.practicum.model.EventState.PUBLISHED
+              and (:textEmpty = true
+                   or lower(e.annotation) like lower(concat('%', :text, '%'))
+                   or lower(e.description) like lower(concat('%', :text, '%'))
+                   )
+              and (:categoriesEmpty = true or e.category.id in :categories)
+              and (:paidNotSet = true or e.paid = :paid)
+              and (:rangeStartNotSet = true or e.eventDate >= :rangeStart)
+              and (:rangeEndNotSet = true or e.eventDate <= :rangeEnd)
+              and (:onlyAvailable = false
+                   or e.participantLimit = 0
+                   or (select count(r.id)
+                       from Request r
+                       where r.event.id = e.id
+                       and r.status = ru.practicum.model.RequestStatus.CONFIRMED) < e.participantLimit
+                   )
+              and (:rangeStartNotSet = false
+                   or :rangeEndNotSet = false
+                   or e.eventDate > :now)
+            """)
+    List<Event> searchPublic(
+            @Param("text") String text,
+            @Param("textEmpty") boolean textEmpty,
+            @Param("categories") List<Long> categories,
+            @Param("categoriesEmpty") boolean categoriesEmpty,
+            @Param("paid") Boolean paid,
+            @Param("paidNotSet") boolean paidNotSet,
+            @Param("rangeStart") LocalDateTime rangeStart,
+            @Param("rangeStartNotSet") boolean rangeStartNotSet,
+            @Param("rangeEnd") LocalDateTime rangeEnd,
+            @Param("rangeEndNotSet") boolean rangeEndNotSet,
+            @Param("onlyAvailable") Boolean onlyAvailable,
+            @Param("now") LocalDateTime now
     );
 
     Optional<Event> findByIdAndState(Long eventId, EventState state);

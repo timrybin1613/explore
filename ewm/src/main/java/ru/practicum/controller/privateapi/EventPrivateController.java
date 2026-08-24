@@ -59,7 +59,7 @@ public class EventPrivateController {
     @PatchMapping("/{eventId}/requests")
     public RequestStatusUpdateResultDto updateEventRequestStatusPrivate(@PathVariable Long userId,
                                                                         @PathVariable Long eventId,
-                                                                        @RequestBody RequestStatusUpdateRequestDto dto) {
+                                                                        @Valid @RequestBody RequestStatusUpdateRequestDto dto) {
         return eventService.updateRequestStatus(dto, userId, eventId);
     }
 }
