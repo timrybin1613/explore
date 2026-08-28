@@ -118,4 +118,15 @@ public interface EventRepository extends JpaRepository<Event, Long> {
     );
 
     Optional<Event> findByIdAndState(Long eventId, EventState state);
+
+    @Query("""
+            select e
+            from Event e
+            where e.initiator.id in :ids
+              and e.state = ru.practicum.model.EventState.PUBLISHED
+              and e.eventDate > :now
+            """)
+    List<Event> findActualEventsByInitiatorIds(@Param("ids") List<Long> ids,
+                                               @Param("now") LocalDateTime now,
+                                               Pageable pageable);
 }

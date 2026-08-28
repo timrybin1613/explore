@@ -40,4 +40,5 @@ public class UserAdminController {
     public void deleteUserAdmin(@PathVariable Long userId) {
         userService.deleteUser(userId);
     }
+
 }

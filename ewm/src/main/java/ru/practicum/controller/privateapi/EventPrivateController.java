@@ -62,4 +62,11 @@ public class EventPrivateController {
                                                                         @Valid @RequestBody RequestStatusUpdateRequestDto dto) {
         return eventService.updateRequestStatus(dto, userId, eventId);
     }
+
+    @GetMapping("/subscriptions")
+    public List<EventShortDto> findAllSubscriptionsPrivate(@PathVariable Long userId,
+                                                           @RequestParam(defaultValue = "0") Integer from,
+                                                           @RequestParam(defaultValue = "10") Integer size) {
+        return eventService.getEventsBySubscriptions(userId, PageUtils.fromOffset(from, size));
+    }
 }

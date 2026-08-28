@@ -40,4 +40,7 @@ public interface EventService {
                                         Pageable pageable);
 
     EventFullDto getEventById(Long eventId, HttpServletRequest request);
+
+    List<EventShortDto> getEventsBySubscriptions(Long userId,
+                                                 Pageable pageable);
 }

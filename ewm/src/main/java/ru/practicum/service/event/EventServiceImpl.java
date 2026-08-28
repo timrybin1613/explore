@@ -46,7 +46,7 @@ public class EventServiceImpl implements EventService {
     private final UserMapper userMapper;
     private final RequestMapper requestMapper;
     private final EventStatsService eventStatsService;
-
+    private final SubscriptionRepository subscriptionRepository;
     private static final Set<EventState> EDITABLE_STATES = EnumSet.of(
             EventState.PENDING,
             EventState.CANCELED
@@ -449,6 +449,27 @@ public class EventServiceImpl implements EventService {
                         eventId, 0).longValue(),
                 requestsByEventId.getOrDefault(eventId, 0L));
 
+    }
+
+    @Override
+    public List<EventShortDto> getEventsBySubscriptions(Long userId,
+                                                        Pageable pageable) {
+        User user = getUserOrThrow(userId);
+        LocalDateTime now = LocalDateTime.now().withNano(0);
+
+        List<Long> subscriptionIds = subscriptionRepository.findTargetUserIds(user.getId());
+
+        if (subscriptionIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<Event> events = eventRepository.findActualEventsByInitiatorIds(subscriptionIds, now, pageable);
+
+        Map<Long, Long> requestsByEventId = eventStatsService.getConfirmedRequestsMap(
+                events.stream().map(Event::getId).toList());
+        Map<Long, Integer> viewsByEventId = eventStatsService.getViewsMap(events);
+
+        return buildShortDtos(events, requestsByEventId, viewsByEventId);
     }
 
     private List<EventShortDto> searchByEventDate(EventSearchCriteria criteria,

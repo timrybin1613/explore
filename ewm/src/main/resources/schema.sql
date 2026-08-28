@@ -2,6 +2,8 @@ CREATE TABLE IF NOT EXISTS users (
     user_id BIGINT GENERATED ALWAYS AS IDENTITY,
     email VARCHAR(254) NOT NULL UNIQUE,
     name VARCHAR(250) NOT NULL,
+    subscriptions_allowed BOOLEAN DEFAULT FALSE,
+    subscriptions_public BOOLEAN DEFAULT FALSE,
 
     CONSTRAINT pk_users PRIMARY KEY (user_id)
 );
@@ -63,6 +65,27 @@ CREATE TABLE IF NOT EXISTS compilations_events (
     CONSTRAINT pk_compilation_events PRIMARY KEY (compilation_id, event_id)
 );
 
+CREATE TABLE IF NOT EXISTS subscriptions (
+    subscriber_id BIGINT NOT NULL,
+    target_user_id BIGINT NOT NULL,
+
+    PRIMARY KEY (subscriber_id, target_user_id),
+
+    CONSTRAINT fk_subscription_subscriber
+        FOREIGN KEY (subscriber_id)
+        REFERENCES users(user_id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_subscription_target
+        FOREIGN KEY (target_user_id)
+        REFERENCES users(user_id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT chk_subscription_self
+        CHECK (subscriber_id <> target_user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_subscriptions_target ON subscriptions(target_user_id);
 CREATE INDEX IF NOT EXISTS idx_events_category_id ON events(category_id);
 CREATE INDEX IF NOT EXISTS idx_events_initiator_id ON events(initiator_id);
 CREATE INDEX IF NOT EXISTS idx_events_event_date ON events(event_date);
