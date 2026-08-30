@@ -23,8 +23,12 @@ public class SubscriptionServiceImpl implements SubscriptionService {
         getUserOrThrow(userId);
         User targetUser = getUserOrThrow(targetUserId);
 
-        if (!targetUser.getSubscriptionsAllowed()) {
+        if (!Boolean.TRUE.equals(targetUser.getSubscriptionsAllowed())) {
             throw new ConflictException("Subscriptions are not allowed");
+        }
+
+        if (userId.equals(targetUserId)) {
+            throw new ConflictException("Self subscriptions are not allowed");
         }
 
         subscriptionRepository.addSubscription(userId, targetUserId);

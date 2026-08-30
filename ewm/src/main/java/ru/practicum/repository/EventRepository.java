@@ -43,6 +43,8 @@ public interface EventRepository extends JpaRepository<Event, Long> {
     @Query("""
             select e
             from Event e
+            join fetch e.initiator
+            join fetch e.category
             where e.state = ru.practicum.model.EventState.PUBLISHED
               and (:textEmpty = true
                    or lower(e.annotation) like lower(concat('%', :text, '%'))
@@ -82,6 +84,8 @@ public interface EventRepository extends JpaRepository<Event, Long> {
     @Query("""
             select e
             from Event e
+            join fetch e.initiator
+            join fetch e.category
             where e.state = ru.practicum.model.EventState.PUBLISHED
               and (:textEmpty = true
                    or lower(e.annotation) like lower(concat('%', :text, '%'))
@@ -122,6 +126,8 @@ public interface EventRepository extends JpaRepository<Event, Long> {
     @Query("""
             select e
             from Event e
+            join fetch e.initiator
+            join fetch e.category
             where e.initiator.id in :ids
               and e.state = ru.practicum.model.EventState.PUBLISHED
               and e.eventDate > :now
