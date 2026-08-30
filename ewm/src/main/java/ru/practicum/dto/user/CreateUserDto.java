@@ -25,4 +25,8 @@ public class CreateUserDto {
     @NotNull
     @NotBlank
     private String name;
+
+    private Boolean subscriptionsAllowed;
+
+    private Boolean subscriptionsPublic;
 }

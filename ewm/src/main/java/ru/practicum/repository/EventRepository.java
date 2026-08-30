@@ -43,6 +43,8 @@ public interface EventRepository extends JpaRepository<Event, Long> {
     @Query("""
             select e
             from Event e
+            join fetch e.initiator
+            join fetch e.category
             where e.state = ru.practicum.model.EventState.PUBLISHED
               and (:textEmpty = true
                    or lower(e.annotation) like lower(concat('%', :text, '%'))
@@ -82,6 +84,8 @@ public interface EventRepository extends JpaRepository<Event, Long> {
     @Query("""
             select e
             from Event e
+            join fetch e.initiator
+            join fetch e.category
             where e.state = ru.practicum.model.EventState.PUBLISHED
               and (:textEmpty = true
                    or lower(e.annotation) like lower(concat('%', :text, '%'))
@@ -118,4 +122,17 @@ public interface EventRepository extends JpaRepository<Event, Long> {
     );
 
     Optional<Event> findByIdAndState(Long eventId, EventState state);
+
+    @Query("""
+            select e
+            from Event e
+            join fetch e.initiator
+            join fetch e.category
+            where e.initiator.id in :ids
+              and e.state = ru.practicum.model.EventState.PUBLISHED
+              and e.eventDate > :now
+            """)
+    List<Event> findActualEventsByInitiatorIds(@Param("ids") List<Long> ids,
+                                               @Param("now") LocalDateTime now,
+                                               Pageable pageable);
 }

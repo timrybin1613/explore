@@ -15,9 +15,13 @@ public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "user_id")
-    Long id;
+    private Long id;
 
-    String name;
+    private String name;
 
-    String email;
+    private String email;
+
+    private Boolean subscriptionsAllowed;
+
+    private Boolean subscriptionsPublic;
 }

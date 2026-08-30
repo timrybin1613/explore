@@ -15,6 +15,8 @@ public class UserMapper {
         return User.builder()
                 .email(dto.getEmail())
                 .name(dto.getName())
+                .subscriptionsPublic(dto.getSubscriptionsPublic() != null ? dto.getSubscriptionsPublic() : false)
+                .subscriptionsAllowed(dto.getSubscriptionsAllowed() != null ? dto.getSubscriptionsAllowed() : false)
                 .build();
     }
 
@@ -30,7 +32,13 @@ public class UserMapper {
                 .id(user.getId())
                 .email(user.getEmail())
                 .name(user.getName())
+                .subscriptionsAllowed(user.getSubscriptionsAllowed() != null ? user.getSubscriptionsAllowed() : false)
+                .subscriptionsPublic(user.getSubscriptionsPublic() != null ? user.getSubscriptionsPublic() : false)
                 .build();
+    }
+
+    public List<UserShortDto> toShortDto(List<User> users) {
+        return users.stream().map(this::toUserShortDto).toList();
     }
 
     public List<UserDto> toDto(List<User> users) {
